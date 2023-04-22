@@ -19,7 +19,7 @@ import numpy as np
 # SemiSupOneLayerMSE is a Semi Supervised method that has one output layer
 # and uses the MSE (L2) loss function.
 
-class SemiSupOneLayerMSE(object):
+class SemiSupMethod1(object):
     def __init__(self, SupModule, SupLossFun, SupOptimizer, NumItUnsup, NumItSup):
 
         # Module for creating supervised agents

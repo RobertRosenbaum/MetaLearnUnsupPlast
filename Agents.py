@@ -30,9 +30,9 @@ class IdentityNet(nn.Module):
 ###
 # FCFwdNet is a fully connected forward net agent
 ###
-class FCFwdNet(nn.Module):
+class FCFFwdUnsupAgent(nn.Module):
     def __init__(self, MetaParams, HyperParams):
-        super(FCFwdNet, self).__init__()
+        super(FCFFwdUnsupAgent, self).__init__()
         self.MetaParams = MetaParams
         self.HyperParams = HyperParams
 
@@ -64,12 +64,12 @@ class FCFwdNet(nn.Module):
 
         # Better initialization than the default
         for i in range(self.Depth):
-            #torch.nn.init.xavier_uniform_(self.LinLayers[i].weight, gain=nn.sqrt(2.0))
+            #torch.nn.init.xavier_uniform_(self.LinLayers[i].weight, gain=torch.sqrt(torch.tensor(2.0)))
             torch.nn.init.kaiming_uniform_(self.LinLayers[i].weight, nonlinearity='tanh')
 
     # Forward pass
     def forward(self, x):
-        self.Activations[0] = x
+        self.Activations[0] = nn.Flatten()(x)
         for i in range(self.Depth-1):
             self.Activations[i+1] = self.gHidden(self.LinLayers[i](self.Activations[i]))
         self.Activations[self.Depth] = self.gLast(self.LinLayers[self.Depth-1](self.Activations[self.Depth-1]))
@@ -89,20 +89,20 @@ class FCFwdNet(nn.Module):
 
             # These are used for scaling updates rules.
             # std of entries in W
-            Wscale=np.sqrt(1/W.shape[1])
+            Wscale=torch.sqrt(torch.tensor(1/W.shape[1]))
             # sqrt of pre and post sizes
-            PreScale=np.sqrt(W.shape[1])
-            PostScale=np.sqrt(W.shape[0])
+            PreScale=torch.sqrt(torch.tensor(W.shape[1]))
+            PostScale=torch.sqrt(torch.tensor(W.shape[0]))
             # batch size
             BatchScale=len(aPre)
 
-            print('ps',i,Wscale**2,PreScale,PostScale,BatchScale)
-            #print('map',MeanaPost.var().item(),1/np.sqrt(BatchScale))
-            print('dw',i,W.var().item(),
-                  (MeanaPost[:,None].expand(W.shape)*Wscale*PreScale).var().item(),
-                  (aPost.T@aPre*PreScale*Wscale/BatchScale).var().item(),
-                  (aPost.T@(aPre-aPost@W)*PreScale*Wscale/BatchScale).var().item()
-                  )
+            #print('ps',i,Wscale**2,PreScale,PostScale,BatchScale)
+            #print('map',MeanaPost.var().item(),1/torch.sqrt(torch.tensor(BatchScale)))
+            # print('dw',i,W.var().item(),
+            #       (MeanaPost[:,None].expand(W.shape)*Wscale*PreScale).var().item(),
+            #       (aPost.T@aPre*PreScale*Wscale/BatchScale).var().item(),
+            #       (aPost.T@(aPre-aPost@W)*PreScale*Wscale/BatchScale).var().item()
+            #       )
 
 
             # Weight decay

@@ -20,17 +20,17 @@ import numpy as np
 # and uses the MSE (L2) loss function.
 
 class SemiSupMethod1(object):
-    def __init__(self, SupModule, SupLossFun, SupOptimizer, NumItUnsup, NumItSup):
+    def __init__(self, SupModuleGetter, SupLossFun, SupOptimizerGetter, NumItUnsup, NumItSup):
 
         # Module for creating supervised agents
         # Calling:
-        # model = SupModule()
-        # should return an appropriate model for supervised learning
-        self.SupModule = SupModule
+        # model = SupModuleGetter()
+        # should return a model for supervised learning
+        self.SupModuleGetter = SupModuleGetter
 
         # An optimizer for supervised learning
-        # e.g., SupOptimizer = torch.optim.Adam
-        self.SupOptimizer = SupOptimizer
+        # e.g., SupOptimizerGetter = torch.optim.Adam
+        self.SupOptimizerGetter = SupOptimizerGetter
 
         # A loss function for supervised learning
         # e.g., SupLossFun = nn.CrossEntropyLoss()
@@ -60,7 +60,7 @@ class SemiSupMethod1(object):
                     X, _ = next(UnsupIterator)
 
                 # Apply network to a batch of inputs
-                V = Population[j].Apply(X)
+                V = Population[j](X)
 
                 # Update params
                 Population[j].UpdateParams()
@@ -69,23 +69,22 @@ class SemiSupMethod1(object):
     # This corresponds to performing a supervised learning loop
     # and then computing error rate on a test data set.
     def ComputeMetaLoss(self, Population, train_loader, test_loader):
-        self.TrainLossCurve = np.zeros(self.NumItSup)
-        self.TrainAccuracyCurve = np.zeros(self.NumItSup)
+        self.TrainLossCurve = torch.zeros(self.NumItSup)
+        self.TrainAccuracyCurve = torch.zeros(self.NumItSup)
         self.MeanTestLoss = 0
 
-
+        # Initialize data iterators
         TrainIterator = iter(train_loader)
         TestIterator = iter(test_loader)
 
         # For each agent and each iteration
-        losses = torch.zeros(len(Population))
         ErrorRate = torch.zeros(len(Population))
         for j in range(len(Population)):
 
             # Initialize new supervised model and
             # optimizer
-            SupModel = self.SupModule()
-            optimizer = self.SupOptimizer(SupModel.parameters())
+            SupModel = self.SupModuleGetter()
+            optimizer = self.SupOptimizerGetter(SupModel.parameters())
 
 
             # Perform supervised learning
@@ -97,7 +96,7 @@ class SemiSupMethod1(object):
                     Xtrain, Ytrain = next(TrainIterator)
 
                 # Pre-process with agent
-                V = Population[j].Apply(Xtrain)
+                V = Population[j](Xtrain)
 
                 # Get output and loss
                 Yhat = SupModel(V)
@@ -108,12 +107,12 @@ class SemiSupMethod1(object):
                 # Update using optimizer passed in
                 optimizer.zero_grad()
                 Loss.backward()
-                self.SupOptimizer().step()
+                optimizer.step()
 
                 # Store pop avg train accuracy and loss
                 with torch.no_grad():
-                    Guesses = np.argmax(Yhat, axis=1)
-                    self.TrainAccuracyCurve[k] += np.mean((Guesses == Ytrain)) / len(Population)
+                    Guesses = torch.argmax(Yhat, axis=1)
+                    self.TrainAccuracyCurve[k] += torch.mean((Guesses == Ytrain).float()) / len(Population)
                     self.TrainLossCurve[k] += Loss.item()/len(Population)
 
 
@@ -127,15 +126,15 @@ class SemiSupMethod1(object):
                     Xtest, Ytest = next(TestIterator)
 
                 # Pre-process with agent
-                V = Population[j].Apply(Xtest)
+                V = Population[j](Xtest)
 
                 # Get output and loss
                 Yhat = SupModel(V)
                 self.MeanTestLoss += self.SupLossFun(Yhat, Ytest)/len(Population)
 
                 # Compute error rate
-                Guesses = np.argmax(Yhat, axis=0)
-                Accuracy = np.mean((Guesses == Ytest))
+                Guesses = torch.argmax(Yhat, axis=1)
+                Accuracy = torch.mean((Guesses == Ytest).float())
                 ErrorRate[j] = 1-Accuracy
         return ErrorRate
 

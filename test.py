@@ -7,12 +7,18 @@ import torch.nn as nn
 import numpy as np
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import math
+from time import time as tm
+import warnings
+import matplotlib.cm as colormap
+import seaborn as sns
+import matplotlib.colors
 
 
 # Number of unsupervised and supervised
 # iterations for semi-sup  learning
 NumItUnsup = 10
-NumItSup = 5#0
+NumItSup = 50
 
 # Batch sizes
 unsup_batch_size = 128
@@ -20,10 +26,10 @@ train_batch_size = 128
 test_batch_size = 128
 
 # Number of generations
-NumGenerations=25
+NumGenerations=10
 
 # Population size
-PopSize=10#0
+PopSize=100
 
 # Standard deviation for initializing
 # meta-params
@@ -31,13 +37,12 @@ InitialMetaParamStd = .001
 
 # Evolutionary hyperparams
 Temperature=InitialMetaParamStd
-NumParents=10#(int)(PopSize/2)
+NumParents=(int)(PopSize/3)
 lam = 0
 
 
 # Hyperparams for unsup agents
 UnsupHyperParams = {}
-UnsupMetaParams = .1 * torch.rand(8)
 UnsupHyperParams["Depth"]=5
 UnsupHyperParams["InWidth"]= 28 * 28
 UnsupHyperParams["HiddenWidth"]=100
@@ -94,15 +99,82 @@ method1 = SemiSupMethod1(SupModuleGetter, SupLossFun, SupOptimizerGetter, NumItU
 # Create a population of unsupervised learning agents
 Population=[FCFFwdUnsupAgent(MetaParams[0,j,:], UnsupHyperParams) for j in range(PopSize)]
 
-method1.UnsupLifetime(Population, unsup_loader)
-MetaLoss = method1.ComputeMetaLoss(Population, train_loader, test_loader)
-print(MetaLoss.mean())
+# Ignore warning messages
+# Initialize other stuff
+t0=tm()
+MetaLoss=torch.zeros(NumGenerations,PopSize)
+MeanLossCurves=torch.zeros(NumGenerations,NumItSup)
+MeanAccuracyCurves=torch.zeros(NumGenerations,NumItSup)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
 
-plt.figure()
-plt.hist(MetaLoss)
+    # For each generation
+    for i in range(NumGenerations):
+        # Store meta-params for this generation
+        MetaParams[i, :, :] = torch.stack([p.MetaParams for p in Population])
+
+        # Perform unsupervised learning on population
+        method1.UnsupLifetime(Population, unsup_loader)
+
+        # Perform supervised learning from population to comptue meta-loss
+        MetaLoss[i, :] = method1.ComputeMetaLoss(Population, train_loader, test_loader)
+
+        # Store population-averaged training loss and accuracy curves
+        MeanLossCurves[i, :] = method1.TrainLossCurve
+        MeanAccuracyCurves[i, :] = method1.TrainAccuracyCurve
+
+        t1=tm()
+        print('Generation',i,'of',NumGenerations,'Metaloss:',MetaLoss[i,:].mean().item(),'runtime:',t1-t0,'s')
+
+
+
+# choose a colormap
+cm=colormap.plasma
+plt.figure(figsize=(8,6))
+
+# Plot training loss curves at all generations
+# averaged over population
+plt.subplot(2,2,1)
+for i in range(NumGenerations):
+  plt.plot(MeanLossCurves[i,:].numpy(),color=cm(i/NumGenerations),label=i)
+#plt.legend(loc=[1,0])
+#plt.colorbar(colormap.ScalarMappable(cmap=cm),label='generation/NumGenerations')
+plt.xlabel('supervised iteration num.')
+plt.ylabel('population-avg training loss')
+sns.despine()
+
+# Plot training accuracy curves at all generations
+# averaged over population
+plt.subplot(2,2,2)
+for i in range(NumGenerations):
+  plt.plot(MeanAccuracyCurves[i,:].numpy(),color=cm(i/NumGenerations),label=i)
+#plt.colorbar(colormap.ScalarMappable(cmap=cm),label='generation/NumGenerations')
+plt.xlabel('supervised iteration num.')
+plt.ylabel('population-avg training accuracy')
+sns.despine()
+
+# Plot mean and min meta-losses across generations
+plt.subplot(2,2,3)
+plt.plot(MetaLoss.numpy().mean(axis=1),label='mean')
+plt.plot(MetaLoss.numpy().min(axis=1),label='min')
+plt.xlabel('generation')
+plt.ylabel('meta-loss')
+plt.legend()
+sns.despine()
+
+# Plot Mean and Best meta-params across generations
+plt.subplot(2,2,4)
+for jj in range(NumMetaParams):
+  plt.plot(MetaParams[:,:,jj].numpy().mean(axis=1),label='meta-param'+str(jj))
+plt.legend(loc=(1.02,0))
+plt.xlabel('generation')
+plt.ylabel('population avg. meta-params')
+
+
+plt.tight_layout()
+
 plt.show()
 
-GeneticMethodB(Population, MetaLoss, Temperature, NumParents, .5, lam)
 
 
 print('done')

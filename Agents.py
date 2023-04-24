@@ -8,6 +8,7 @@
 
 import torch
 import torch.nn as nn
+import math
 import numpy as np
 
 ###
@@ -64,7 +65,7 @@ class FCFFwdUnsupAgent(nn.Module):
 
         # Better initialization than the default
         for i in range(self.Depth):
-            #torch.nn.init.xavier_uniform_(self.LinLayers[i].weight, gain=torch.sqrt(torch.tensor(2.0)))
+            #torch.nn.init.xavier_uniform_(self.LinLayers[i].weight, gain=math.sqrt(2.0))
             torch.nn.init.kaiming_uniform_(self.LinLayers[i].weight, nonlinearity='tanh')
 
     # Forward pass
@@ -74,6 +75,12 @@ class FCFFwdUnsupAgent(nn.Module):
             self.Activations[i+1] = self.gHidden(self.LinLayers[i](self.Activations[i]))
         self.Activations[self.Depth] = self.gLast(self.LinLayers[self.Depth-1](self.Activations[self.Depth-1]))
         return self.Activations[self.Depth]
+
+
+    def InitializeParams(self):
+        for i in range(self.Depth):
+            torch.nn.init.xavier_uniform(self.LinLayers[i].weight)
+            self.LinLayers[i].weight.bias.data.fill_(0.01)
 
     # Function for updating weights
     def UpdateParams(self):
@@ -89,15 +96,15 @@ class FCFFwdUnsupAgent(nn.Module):
 
             # These are used for scaling updates rules.
             # std of entries in W
-            Wscale=torch.sqrt(torch.tensor(1/W.shape[1]))
+            Wscale=math.sqrt(1/W.shape[1])
             # sqrt of pre and post sizes
-            PreScale=torch.sqrt(torch.tensor(W.shape[1]))
-            PostScale=torch.sqrt(torch.tensor(W.shape[0]))
+            PreScale=math.sqrt(W.shape[1])
+            PostScale=math.sqrt(W.shape[0])
             # batch size
             BatchScale=len(aPre)
 
             #print('ps',i,Wscale**2,PreScale,PostScale,BatchScale)
-            #print('map',MeanaPost.var().item(),1/torch.sqrt(torch.tensor(BatchScale)))
+            #print('map',MeanaPost.var().item(),1/math.sqrt(BatchScale))
             # print('dw',i,W.var().item(),
             #       (MeanaPost[:,None].expand(W.shape)*Wscale*PreScale).var().item(),
             #       (aPost.T@aPre*PreScale*Wscale/BatchScale).var().item(),

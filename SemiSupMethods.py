@@ -50,8 +50,21 @@ class SemiSupMethod1(object):
     # Function to simulate one generation of a population of agents.
     # This corresponds to iterating the unsupervised learning rule.
     def UnsupLifetime(self, Population, unsup_loader):
+
+        # Putting this outside of the loop across
+        # populations means that data is not
+        # drawn iid with replacement across agents,
+        # but I think it's still okay
+        UnsupIterator = iter(unsup_loader)
+
+        # Initialize unsupervised weights
+        Population[j].InitializeParams()
+
         for j in range(len(Population)):
-            UnsupIterator = iter(unsup_loader)
+
+
+
+
             for k in range(self.NumItUnsup):
                 try:
                     X,_=next(UnsupIterator)

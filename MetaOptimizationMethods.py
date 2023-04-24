@@ -52,7 +52,6 @@ def GeneticMethodB(Pop, MetaLoss, Temperature, NumParents, MinWeight=.5, lam=0):
     # Take the weighted average of the parents' meta-params
     ParentMetaParams = torch.mean(wts[:,None]*AllMetaParams[:NumParents, :], axis=0)/wts.sum()
 
-
     # Set population meta-params
     for j in range(len(Pop)):
         Pop[j].MetaParams = ParentMetaParams + Temperature * torch.randn(numMP)- lam * torch.sign(

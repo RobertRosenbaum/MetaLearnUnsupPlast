@@ -80,7 +80,8 @@ class FCFFwdUnsupAgent(nn.Module):
     def InitializeParams(self):
         for i in range(self.Depth):
             torch.nn.init.xavier_uniform(self.LinLayers[i].weight)
-            self.LinLayers[i].weight.bias.data.fill_(0.01)
+            if self.UseBias:
+                self.LinLayers[i].weight.bias.data.fill_(0.01)
 
     # Function for updating weights
     def UpdateParams(self):

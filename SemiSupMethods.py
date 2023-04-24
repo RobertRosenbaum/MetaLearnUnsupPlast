@@ -57,13 +57,11 @@ class SemiSupMethod1(object):
         # but I think it's still okay
         UnsupIterator = iter(unsup_loader)
 
-        # Initialize unsupervised weights
-        Population[j].InitializeParams()
 
         for j in range(len(Population)):
 
-
-
+            # Initialize unsupervised weights
+            Population[j].InitializeParams()
 
             for k in range(self.NumItUnsup):
                 try:
@@ -91,7 +89,7 @@ class SemiSupMethod1(object):
         TestIterator = iter(test_loader)
 
         # For each agent and each iteration
-        Accuracies = torch.zeros(len(Population))
+        Errors = torch.zeros(len(Population))
         for j in range(len(Population)):
 
             # Initialize new supervised model and
@@ -147,7 +145,8 @@ class SemiSupMethod1(object):
 
                 # Compute error rate
                 Guesses = torch.argmax(Yhat, axis=1)
-                Accuracies[j] = torch.mean((Guesses == Ytest).float())
-        return Accuracies
+                Accuracy = torch.mean((Guesses == Ytest).float())
+                Errors[j] = 1-Accuracy
+        return Errors
 
 

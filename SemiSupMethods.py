@@ -91,7 +91,7 @@ class SemiSupMethod1(object):
         TestIterator = iter(test_loader)
 
         # For each agent and each iteration
-        ErrorRate = torch.zeros(len(Population))
+        Accuracies = torch.zeros(len(Population))
         for j in range(len(Population)):
 
             # Initialize new supervised model and
@@ -147,8 +147,7 @@ class SemiSupMethod1(object):
 
                 # Compute error rate
                 Guesses = torch.argmax(Yhat, axis=1)
-                Accuracy = torch.mean((Guesses == Ytest).float())
-                ErrorRate[j] = 1-Accuracy
-        return ErrorRate
+                Accuracies[j] = torch.mean((Guesses == Ytest).float())
+        return Accuracies
 
 

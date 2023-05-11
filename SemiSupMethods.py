@@ -20,7 +20,7 @@ import numpy as np
 # and uses the MSE (L2) loss function.
 
 class SemiSupMethod1(object):
-    def __init__(self, SupModuleGetter, SupLossFun, SupOptimizerGetter, NumItUnsup, NumItSup):
+    def __init__(self, SupModuleGetter, SupLossFun, SupOptimizerGetter, NumItUnsup, NumItSup, device = 'cpu'):
 
         # Module for creating supervised agents
         # Calling:
@@ -47,6 +47,11 @@ class SemiSupMethod1(object):
         self.TrainAccuracyCurve = torch.zeros(self.NumItSup)
         self.MeanTestLoss = -1
 
+        # Set the device on which to run method.
+        # All parameters of the population must be
+        # on this device.
+        self.device = device
+
     # Function to simulate one generation of a population of agents.
     # This corresponds to iterating the unsupervised learning rule.
     def UnsupLifetime(self, Population, unsup_loader):
@@ -69,6 +74,9 @@ class SemiSupMethod1(object):
                 except:
                     UnsupIterator = iter(unsup_loader)
                     X, _ = next(UnsupIterator)
+
+                # Put X on Agent Device
+                X=X.to(Population[j].device)
 
                 # Apply network to a batch of inputs
                 V = Population[j](X)
@@ -94,7 +102,7 @@ class SemiSupMethod1(object):
 
             # Initialize new supervised model and
             # optimizer
-            SupModel = self.SupModuleGetter()
+            SupModel = self.SupModuleGetter().to(Population[j].device)
             optimizer = self.SupOptimizerGetter(SupModel.parameters())
 
 
@@ -106,14 +114,17 @@ class SemiSupMethod1(object):
                     TrainIterator = iter(train_loader)
                     Xtrain, Ytrain = next(TrainIterator)
 
+                # Put data on Agent Device
+                Xtrain = Xtrain.to(Population[j].device)
+                Ytrain = Ytrain.to(Population[j].device)
+
+
                 # Pre-process with agent
                 V = Population[j](Xtrain)
 
                 # Get output and loss
                 Yhat = SupModel(V)
                 Loss = self.SupLossFun(Yhat, Ytrain)
-
-
 
                 # Update using optimizer passed in
                 optimizer.zero_grad()
@@ -123,7 +134,7 @@ class SemiSupMethod1(object):
                 # Store pop avg train accuracy and loss
                 with torch.no_grad():
                     Guesses = torch.argmax(Yhat, axis=1)
-                    self.TrainAccuracyCurve[k] += torch.mean((Guesses == Ytrain).float()) / len(Population)
+                    self.TrainAccuracyCurve[k] += torch.mean((Guesses == Ytrain).float().cpu()) / len(Population)
                     self.TrainLossCurve[k] += Loss.item()/len(Population)
 
 
@@ -136,6 +147,10 @@ class SemiSupMethod1(object):
                     TestIterator = iter(test_loader)
                     Xtest, Ytest = next(TestIterator)
 
+                # Put data on Agent Device
+                Xtest = Xtest.to(Population[j].device)
+                Ytest = Ytest.to(Population[j].device)
+
                 # Pre-process with agent
                 V = Population[j](Xtest)
 
@@ -145,7 +160,7 @@ class SemiSupMethod1(object):
 
                 # Compute error rate
                 Guesses = torch.argmax(Yhat, axis=1)
-                Accuracy = torch.mean((Guesses == Ytest).float())
+                Accuracy = torch.mean((Guesses == Ytest).float().cpu())
                 Errors[j] = 1-Accuracy
         return Errors
 

@@ -14,6 +14,8 @@ import matplotlib.cm as colormap
 import seaborn as sns
 import matplotlib.colors
 
+!!!
+THIS FILE IS NOT CURRENT. SEE test.ipynb
 
 # Number of unsupervised and supervised
 # iterations for semi-sup  learning
@@ -21,73 +23,112 @@ NumItUnsup = 10
 NumItSup = 50
 
 # Batch sizes
-unsup_batch_size = 128
-train_batch_size = 128
-test_batch_size = 128
+unsup_batch_size = 64
+train_batch_size = 64
+test_batch_size = 64
 
 # Number of generations
-NumGenerations=10
+NumGenerations = 10
 
 # Population size
-PopSize=100
+PopSize = 100
 
 # Standard deviation for initializing
 # meta-params
-InitialMetaParamStd = .001
+InitialMetaParamStd = .002
 
 # Evolutionary hyperparams
-Temperature=InitialMetaParamStd
-NumParents=(int)(PopSize/3)
+Temperature = .001
+NumParents = (int)(PopSize / 4)
 lam = 0
-
 
 # Hyperparams for unsup agents
 UnsupHyperParams = {}
-UnsupHyperParams["Depth"]=5
-UnsupHyperParams["InWidth"]= 28 * 28
-UnsupHyperParams["HiddenWidth"]=100
-UnsupHyperParams["OutWidth"]=100
-UnsupHyperParams["gHidden"]=torch.tanh#nn.ReLU()
-UnsupHyperParams["gLast"]=torch.tanh#nn.ReLU()
+UnsupHyperParams["Depth"] = 3
+UnsupHyperParams["InWidth"] = 28 * 28  # 32*32*3
+UnsupHyperParams["HiddenWidth"] = 64
+UnsupHyperParams["OutWidth"] = 64
+UnsupHyperParams["gHidden"] = torch.tanh
+UnsupHyperParams["gLast"] = torch.tanh  # nn.ReLU()
 
 # Hyperparams for sup module
 SupHyperParams = {}
-SupHyperParams["Depth"]=3
-SupHyperParams["InWidth"]= UnsupHyperParams["OutWidth"]
-SupHyperParams["HiddenWidth"]=50
-SupHyperParams["OutWidth"]=10
-SupHyperParams["gHidden"]=nn.ReLU()
-SupHyperParams["gLast"]=nn.Identity()
+SupHyperParams["Depth"] = 3
+SupHyperParams["InWidth"] = UnsupHyperParams["OutWidth"]
+SupHyperParams["HiddenWidth"] = 64
+SupHyperParams["OutWidth"] = 10
+SupHyperParams["gHidden"] = nn.ReLU()
+SupHyperParams["gLast"] = nn.Identity()
+
 
 # Function to get an initialized supervised learning module
 def SupModuleGetter():
     return FCFFwdSupModule(SupHyperParams)
 
+
 # Import and build data loaders
 from torchvision.datasets import MNIST
+
 train_dataset = MNIST('./',
-      train=True,
-      transform=transforms.ToTensor(),
-      download=True)
+                      train=True,
+                      transform=transforms.ToTensor(),
+                      download=True)
 test_dataset = MNIST('./',
-      train=False,
-      transform=transforms.ToTensor(),
-      download=True)
+                     train=False,
+                     transform=transforms.ToTensor(),
+                     download=True)
 unsup_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                          batch_size=unsup_batch_size,
-                                          shuffle=True)
+                                           batch_size=unsup_batch_size,
+                                           shuffle=True)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                          batch_size=train_batch_size,
-                                          shuffle=True)
+                                           batch_size=train_batch_size,
+                                           shuffle=True)
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                           batch_size=test_batch_size,
                                           shuffle=True)
 
+# # Import and build data loaders
+# from torchvision.datasets import CIFAR10
+# train_dataset = CIFAR10('./',
+#       train=True,
+#       transform=transforms.ToTensor(),
+#       download=True)
+# test_dataset = CIFAR10('./',
+#       train=False,
+#       transform=transforms.ToTensor(),
+#       download=True)
+# unsup_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+#                                           batch_size=unsup_batch_size,
+#                                           shuffle=True)
+# train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+#                                           batch_size=train_batch_size,
+#                                           shuffle=True)
+# test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+#                                           batch_size=test_batch_size,
+#                                           shuffle=True)
+
+
+# from torchvision.datasets import STL10
+# unsup_loader = STL10('./',
+#       split='unlabeled',
+#       transform=transforms.ToTensor(),
+#       download=True)
+
+# train_loader = STL10('./',
+#       split='train',
+#       transform=transforms.ToTensor(),
+#       download=True)
+
+# test_loader = STL10('./',
+#       split='test',
+#       transform=transforms.ToTensor(),
+#       download=True)
+
 
 # iInitialize meta-parameters
 NumMetaParams = 8
-MetaParams=torch.zeros(NumGenerations,PopSize,NumMetaParams)
-MetaParams[0,:,:]= InitialMetaParamStd * torch.randn(PopSize, NumMetaParams)
+MetaParams = torch.zeros(NumGenerations, PopSize, NumMetaParams)
+MetaParams[0, :, :] = InitialMetaParamStd * torch.randn(PopSize, NumMetaParams)
 
 # Supervised loss function and optimizer
 SupLossFun = nn.CrossEntropyLoss()
@@ -97,14 +138,14 @@ SupOptimizerGetter = torch.optim.Adam
 method1 = SemiSupMethod1(SupModuleGetter, SupLossFun, SupOptimizerGetter, NumItUnsup, NumItSup)
 
 # Create a population of unsupervised learning agents
-Population=[FCFFwdUnsupAgent(MetaParams[0,j,:], UnsupHyperParams) for j in range(PopSize)]
+Population = [FCFFwdUnsupAgent(MetaParams[0, j, :], UnsupHyperParams) for j in range(PopSize)]
 
 # Ignore warning messages
 # Initialize other stuff
-t0=tm()
-MetaLoss=torch.zeros(NumGenerations,PopSize)
-MeanLossCurves=torch.zeros(NumGenerations,NumItSup)
-MeanAccuracyCurves=torch.zeros(NumGenerations,NumItSup)
+t0 = tm()
+MetaLoss = torch.zeros(NumGenerations, PopSize)
+MeanLossCurves = torch.zeros(NumGenerations, NumItSup)
+MeanAccuracyCurves = torch.zeros(NumGenerations, NumItSup)
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
 
@@ -123,8 +164,12 @@ with warnings.catch_warnings():
         MeanLossCurves[i, :] = method1.TrainLossCurve
         MeanAccuracyCurves[i, :] = method1.TrainAccuracyCurve
 
-        t1=tm()
-        print('Generation',i,'of',NumGenerations,'Metaloss:',MetaLoss[i,:].mean().item(),'runtime:',t1-t0,'s')
+        GeneticMethodB(Population, MetaLoss[i, :], Temperature, NumParents, MinWeight=.5, lam=0)
+
+        t1 = tm()
+        print('Generation', i, 'of', NumGenerations, 'Metaloss:', MetaLoss[i, :].mean().item(), 'runtime:', t1 - t0,
+              's')
+
 
 
 
@@ -164,7 +209,7 @@ sns.despine()
 
 # Plot Mean and Best meta-params across generations
 plt.subplot(2,2,4)
-for jj in range(NumMetaParams):
+for jj in [1,3,4,5,7]:#range(NumMetaParams):
   plt.plot(MetaParams[:,:,jj].numpy().mean(axis=1),label='meta-param'+str(jj))
 plt.legend(loc=(1.02,0))
 plt.xlabel('generation')
@@ -175,7 +220,6 @@ plt.tight_layout()
 
 plt.show()
 
-
-
 print('done')
+
 

@@ -32,7 +32,7 @@ class IdentityNet(nn.Module):
 # FCFwdNet is a fully connected forward net agent
 ###
 class FCFFwdUnsupAgent(nn.Module):
-    def __init__(self, MetaParams, HyperParams):
+    def __init__(self, MetaParams, HyperParams, device = 'cpu'):
         super(FCFFwdUnsupAgent, self).__init__()
         self.MetaParams = MetaParams
         self.HyperParams = HyperParams
@@ -67,6 +67,10 @@ class FCFFwdUnsupAgent(nn.Module):
         for i in range(self.Depth):
             #torch.nn.init.xavier_uniform_(self.LinLayers[i].weight, gain=math.sqrt(2.0))
             torch.nn.init.kaiming_uniform_(self.LinLayers[i].weight, nonlinearity='tanh')
+
+        self.device = device
+        self.to(device)
+
 
     # Forward pass
     def forward(self, x):
@@ -123,7 +127,8 @@ class FCFFwdUnsupAgent(nn.Module):
             W-=self.MetaParams[4]*aPost.T@aPre*PreScale*Wscale/BatchScale
 
             # Homeostatic
-            #W+=self.MetaParams[5]*(1.0-aPost.T)@aPre
+            W+=self.MetaParams[5]*(1.0-aPost.T)@aPre
+
             #W+=self.MetaParams[5]*W*MeanaPre
             #W+=self.MetaParams[6]*W*MeanaPost[:, torch.newaxis]
 
